@@ -5,6 +5,7 @@ import { ChangeOrder, DEFAULT_ORDER } from './changeOrder'
 import {
   ARTIFACT_ICON,
   GROUP_ICON,
+  groupCountLabel,
   childrenOf,
   nodeId,
   nodeDescription,
@@ -21,6 +22,7 @@ export const ORDER_CONTEXT = 'spectraViewer.order'
 export class ChangesTreeDataProvider implements vscode.TreeDataProvider<SpectraNode> {
   private snapshot: ChangeSnapshot | undefined
   private order: ChangeOrder = DEFAULT_ORDER
+  private filter = ''
   private readonly changed = new vscode.EventEmitter<void>()
 
   readonly onDidChangeTreeData = this.changed.event
@@ -39,7 +41,7 @@ export class ChangesTreeDataProvider implements vscode.TreeDataProvider<SpectraN
 
     switch (node.kind) {
       case 'group':
-        item.description = String(node.count)
+        item.description = groupCountLabel(node)
         item.iconPath = new vscode.ThemeIcon(GROUP_ICON)
         item.collapsibleState = vscode.TreeItemCollapsibleState.Expanded
         break
@@ -89,11 +91,28 @@ export class ChangesTreeDataProvider implements vscode.TreeDataProvider<SpectraN
     }
 
     this.snapshot ??= await scanChanges(root, this.logger)
-    return rootNodes(this.snapshot)
+    return rootNodes(this.snapshot, this.filter)
   }
 
   get currentOrder(): ChangeOrder {
     return this.order
+  }
+
+  get currentFilter(): string {
+    return this.filter
+  }
+
+  /**
+   * Applies a name filter and rebuilds the tree from the snapshot in hand —
+   * filtering, like sorting, never touches the file system. A refresh keeps
+   * whatever filter is set, so it survives a rescan.
+   */
+  setFilter(filter: string): void {
+    if (filter === this.filter) {
+      return
+    }
+    this.filter = filter
+    this.changed.fire()
   }
 
   /**

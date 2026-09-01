@@ -5,6 +5,7 @@ import {
   ARTIFACT_ICON,
   GROUP_ICON,
   childrenOf,
+  groupCountLabel,
   nodeDescription,
   nodeId,
   progressDescription,
@@ -47,7 +48,7 @@ describe('Display changes as a grouped tree', () => {
       }),
     )
 
-    expect(groups.map((g) => g.count)).toEqual([2, 1, 0])
+    expect(groups.map((g) => groupCountLabel(g))).toEqual(['2', '1', '0'])
   })
 
   it('keeps a parked change visible under the Parked group', () => {
@@ -279,5 +280,119 @@ describe('Sort changes within groups — tree rebuild', () => {
       (childrenOf(group!, by) as ChangeNode[]).map(nodeId).sort()
 
     expect(idsFor(ChangeOrder.Name)).toEqual(idsFor(ChangeOrder.Created))
+  })
+})
+
+describe('Display changes as a grouped tree — counts while filtering', () => {
+  it('shows the plain change count when the filter is empty', () => {
+    // The spec's "Groups render with counts" scenario.
+    const groups = rootNodes(
+      snapshot({
+        [ChangeGroup.Active]: [change('add-search'), change('mid-tier')],
+        [ChangeGroup.Parked]: [change('dark-mode', ChangeGroup.Parked)],
+      }),
+      '',
+    )
+
+    expect(groups.map((g) => groupCountLabel(g))).toEqual(['2', '1', '0'])
+  })
+
+  it('shows matching and total counts while filtering', () => {
+    // The spec's "Groups render matched and total counts while filtering" scenario.
+    const groups = rootNodes(
+      snapshot({
+        [ChangeGroup.Active]: [change('add-search'), change('mid-tier'), change('zebra-fix')],
+        [ChangeGroup.Parked]: [change('search-cache', ChangeGroup.Parked)],
+      }),
+      'search',
+    )
+
+    expect(groups.map((g) => g.matched)).toEqual([1, 1, 0])
+    expect(groups.map((g) => g.total)).toEqual([3, 1, 0])
+    for (const label of groups.map((g) => groupCountLabel(g))) {
+      expect(label).toMatch(/\d.*\d/)
+    }
+  })
+
+  it('keeps all three group nodes even when nothing matches', () => {
+    const groups = rootNodes(
+      snapshot({ [ChangeGroup.Active]: [change('add-search')] }),
+      'nonexistent',
+    )
+
+    expect(groups.map((g) => g.label)).toEqual(['Active', 'Parked', 'Archived'])
+    expect(groups.map((g) => g.matched)).toEqual([0, 0, 0])
+  })
+})
+
+describe('Filter changes by name — tree rebuild', () => {
+  it('narrows every group at once', () => {
+    // The spec's "Filtering narrows every group" scenario, with its exact names.
+    const groups = rootNodes(
+      snapshot({
+        [ChangeGroup.Active]: [change('add-search'), change('mid-tier'), change('zebra-fix')],
+        [ChangeGroup.Parked]: [change('search-cache', ChangeGroup.Parked)],
+      }),
+      'search',
+    )
+    const namesIn = (g: GroupNode): string[] =>
+      (childrenOf(g) as ChangeNode[]).map((c) => c.change.name)
+
+    expect(namesIn(groups[0]!)).toEqual(['add-search'])
+    expect(namesIn(groups[1]!)).toEqual(['search-cache'])
+  })
+
+  it('keeps every artifact of a matching change visible', () => {
+    // The spec's "Artifacts of a matching change stay visible" scenario.
+    const withArtifacts = change('add-search', ChangeGroup.Active, ['proposal.md', 'tasks.md'])
+    const [group] = rootNodes(snapshot({ [ChangeGroup.Active]: [withArtifacts] }), 'search')
+    const [changeNode] = childrenOf(group!) as ChangeNode[]
+
+    expect(childrenOf(changeNode!).map((n) => n.label)).toEqual(['proposal.md', 'tasks.md'])
+  })
+
+  it('leaves all three groups present with no children when nothing matches', () => {
+    const groups = rootNodes(
+      snapshot({
+        [ChangeGroup.Active]: [change('add-search')],
+        [ChangeGroup.Parked]: [change('dark-mode', ChangeGroup.Parked)],
+      }),
+      'nonexistent',
+    )
+
+    expect(groups).toHaveLength(3)
+    for (const g of groups) {
+      expect(childrenOf(g)).toEqual([])
+    }
+  })
+
+  it('restores every change when the filter is cleared', () => {
+    const snap = snapshot({
+      [ChangeGroup.Active]: [change('add-search'), change('mid-tier')],
+    })
+
+    expect(rootNodes(snap, 'search')[0]!.matched).toBe(1)
+    expect(rootNodes(snap, '')[0]!.matched).toBe(2)
+  })
+
+  it('applies the filter after the sort, leaving the sort order intact', () => {
+    const dated = (name: string, modified: string): SpectraChange => ({
+      ...change(name),
+      modified: new Date(modified),
+    })
+    const snap = snapshot({
+      [ChangeGroup.Active]: [
+        dated('search-old', '2026-08-10T00:00:00Z'),
+        dated('search-new', '2026-08-13T00:00:00Z'),
+        dated('mid-tier', '2026-08-12T00:00:00Z'),
+      ],
+    })
+
+    const [group] = rootNodes(snap, 'search')
+    const names = (childrenOf(group!, ChangeOrder.Modified) as ChangeNode[]).map(
+      (c) => c.change.name,
+    )
+
+    expect(names).toEqual(['search-new', 'search-old'])
   })
 })

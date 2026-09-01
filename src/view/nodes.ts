@@ -6,6 +6,7 @@
  * labelling and identity rules stay unit-testable in plain Node.
  */
 import { ChangeOrder, DEFAULT_ORDER, comparatorFor } from './changeOrder'
+import { applyFilter } from './changeFilter'
 import {
   ChangeGroup,
   ChangeStatus,
@@ -17,7 +18,13 @@ export interface GroupNode {
   readonly kind: 'group'
   readonly group: ChangeGroup
   readonly label: string
-  readonly count: number
+  /** Changes surviving the filter; equals `total` when no filter is set. */
+  readonly matched: number
+  /** Changes in the group before filtering. */
+  readonly total: number
+  /** Whether a filter was in effect when this node was built. */
+  readonly filtered: boolean
+  /** Already filtered; the sort order is applied when children are asked for. */
   readonly changes: readonly SpectraChange[]
 }
 
@@ -47,12 +54,35 @@ const GROUP_ORDER: ReadonlyArray<readonly [ChangeGroup, string]> = [
   [ChangeGroup.Archived, 'Archived'],
 ]
 
-/** The three group nodes. Always all three, even when a group is empty. */
-export function rootNodes(snapshot: ChangeSnapshot): GroupNode[] {
+/**
+ * The three group nodes. Always all three, even when a group is empty or
+ * nothing in it survives the filter.
+ */
+export function rootNodes(snapshot: ChangeSnapshot, filter = ''): GroupNode[] {
+  const filtered = filter.trim() !== ''
   return GROUP_ORDER.map(([group, label]) => {
-    const changes = snapshot[group]
-    return { kind: 'group', group, label, count: changes.length, changes }
+    const all = snapshot[group]
+    const changes = applyFilter(all, filter)
+    return {
+      kind: 'group',
+      group,
+      label,
+      matched: changes.length,
+      total: all.length,
+      filtered,
+      changes,
+    }
   })
+}
+
+/**
+ * The count shown beside a group name.
+ *
+ * While filtering it carries both numbers, because a bare "0" cannot tell
+ * "this group is empty" apart from "everything here was filtered out".
+ */
+export function groupCountLabel(group: GroupNode): string {
+  return group.filtered ? `${group.matched}/${group.total}` : String(group.total)
 }
 
 /**

@@ -69,10 +69,31 @@
         "command": "spectraViewer.sortByCreated",
         "title": "Sort by Created",
         "category": "Spectra"
+      },
+      {
+        "command": "spectraViewer.setFilter",
+        "title": "Filter by Name",
+        "category": "Spectra",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "spectraViewer.copyChangeName",
+        "title": "Copy Change Name",
+        "category": "Spectra"
+      },
+      {
+        "command": "spectraViewer.sendCommand",
+        "title": "Spectra Command…",
+        "category": "Spectra"
       }
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "spectraViewer.setFilter",
+          "when": "view == spectraChanges",
+          "group": "navigation@1"
+        },
         {
           "command": "spectraViewer.refresh",
           "when": "view == spectraChanges",
@@ -99,6 +120,18 @@
           "command": "spectraViewer.openArtifact",
           "when": "false"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "spectraViewer.copyChangeName",
+          "when": "view == spectraChanges && viewItem == change",
+          "group": "navigation@1"
+        },
+        {
+          "command": "spectraViewer.sendCommand",
+          "when": "view == spectraChanges && viewItem == change",
+          "group": "navigation@2"
+        }
       ]
     },
     "viewsWelcome": [
@@ -107,7 +140,16 @@
         "contents": "This workspace is not initialised for Spectra.\n\nNo `openspec` directory was found in the first workspace folder.\n\n[Refresh](command:spectraViewer.refresh)",
         "when": "!spectraViewer.initialised"
       }
-    ]
+    ],
+    "keybindings": [
+      {
+        "command": "spectraViewer.copyChangeName",
+        "key": "ctrl+c",
+        "mac": "cmd+c",
+        "when": "focusedView == spectraChanges"
+      }
+    ],
+    "submenus": []
   },
   "scripts": {
     "compile": "node esbuild.mjs",

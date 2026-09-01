@@ -113,3 +113,95 @@ describe('Sort changes within groups — manifest contributions', () => {
     expect(new Set(whens).size).toBe(SORT_COMMANDS.length)
   })
 })
+
+describe('Filter changes by name — manifest contributions', () => {
+  it('contributes a filter command', async () => {
+    const ids: string[] = ((await manifest()).contributes?.commands ?? []).map(
+      (c: { command: string }) => c.command,
+    )
+
+    expect(ids).toContain('spectraViewer.setFilter')
+  })
+
+  it('puts the filter command in the Changes view title bar', async () => {
+    const titleItems: Array<{ command: string; when?: string; group?: string }> =
+      ((await manifest()).contributes?.menus ?? {})['view/title'] ?? []
+    const filter = titleItems.find((i) => i.command === 'spectraViewer.setFilter')
+
+    expect(filter).toBeDefined()
+    expect(filter!.when).toContain('spectraChanges')
+    expect(filter!.group).toContain('navigation')
+  })
+
+  it('gives the filter command an icon so it is visible in the title bar', async () => {
+    const command = ((await manifest()).contributes?.commands ?? []).find(
+      (c: { command: string }) => c.command === 'spectraViewer.setFilter',
+    )
+
+    expect(command.icon).toBeDefined()
+  })
+})
+
+describe('Copy change names to the clipboard — manifest contributions', () => {
+  it('contributes a copy command', async () => {
+    const ids: string[] = ((await manifest()).contributes?.commands ?? []).map(
+      (c: { command: string }) => c.command,
+    )
+
+    expect(ids).toContain('spectraViewer.copyChangeName')
+  })
+
+  it('offers the copy command on the tree context menu', async () => {
+    const items: Array<{ command: string; when?: string }> =
+      ((await manifest()).contributes?.menus ?? {})['view/item/context'] ?? []
+    const copy = items.find((i) => i.command === 'spectraViewer.copyChangeName')
+
+    expect(copy).toBeDefined()
+    expect(copy!.when).toContain('spectraChanges')
+  })
+
+  it('binds copy to a shortcut that only applies while the tree has focus', async () => {
+    const bindings: Array<{ command: string; key: string; mac?: string; when?: string }> =
+      (await manifest()).contributes?.keybindings ?? []
+    const copy = bindings.find((b) => b.command === 'spectraViewer.copyChangeName')
+
+    expect(copy).toBeDefined()
+    expect(copy!.when).toContain('focusedView == spectraChanges')
+    expect(copy!.key).toBeTruthy()
+  })
+})
+
+describe('Send a Spectra command — manifest contributions', () => {
+  it('contributes a single command that opens the command picker', async () => {
+    const ids: string[] = ((await manifest()).contributes?.commands ?? []).map(
+      (c: { command: string }) => c.command,
+    )
+
+    expect(ids).toContain('spectraViewer.sendCommand')
+  })
+
+  it('offers the picker on the tree context menu, for change nodes only', async () => {
+    const items: Array<{ command?: string; when?: string }> =
+      ((await manifest()).contributes?.menus ?? {})['view/item/context'] ?? []
+    const send = items.find((i) => i.command === 'spectraViewer.sendCommand')
+
+    expect(send).toBeDefined()
+    expect(send!.when).toContain('spectraChanges')
+    expect(send!.when).toContain('viewItem == change')
+  })
+
+  it('declares no submenus, since the picker carries the titles instead', async () => {
+    expect((await manifest()).contributes?.submenus ?? []).toEqual([])
+  })
+
+  it('declares no per-slash-command entries in the manifest', async () => {
+    const ids: string[] = ((await manifest()).contributes?.commands ?? []).map(
+      (c: { command: string }) => c.command,
+    )
+
+    // Item texts carry the change name, so they cannot live in a static manifest.
+    for (const stale of ['sendApply', 'sendIngest', 'sendArchive', 'sendCommit']) {
+      expect(ids).not.toContain(`spectraViewer.${stale}`)
+    }
+  })
+})
