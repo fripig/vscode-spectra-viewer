@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags: ['release-*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Also publish the committed version to Open VSX'
+        type: boolean
+        default: false
+
+# Needed to create the GitHub Release at the end of a tag build.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+    # Holds OPEN_VSX_TOKEN. No protection rules, so it gates nothing — it just keeps
+    # the token out of the repository-wide secret scope.
+    environment: cursor
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # release-0.2.0 -> VERSION=0.2.0. A manual workflow_dispatch run sets nothing
+      # and keeps the version committed in package.json. Rejecting a malformed tag
+      # here beats publishing a release whose version is a typo.
+      - name: Derive version from tag
+        if: github.ref_type == 'tag'
+        run: |
+          version="${GITHUB_REF_NAME#release-}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not yield a usable version (got '$version')."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          npm version --no-git-tag-version --allow-same-version "$version"
+          echo "Building version $version"
+
+      - name: Resolve version for a manual run
+        if: github.ref_type != 'tag'
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+
+      # The same gates CI runs, repeated here on purpose: a tag can point at a commit
+      # that never went through CI, and a broken release is far more expensive to undo
+      # than one extra minute of build time.
+      - name: Check types
+        run: npm run check-types
+
+      - name: Run tests
+        run: npm test
+
+      - name: Package
+        run: npx --yes @vscode/vsce package --out "spectra-viewer-${VERSION}.vsix"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: spectra-viewer-*.vsix
+          if-no-files-found: error
+
+      # Before the GitHub Release on purpose: a failed publish leaves the tag
+      # re-pushable, which an already-created release would block.
+      #
+      # The token check is not redundant. Without it a misnamed or missing secret
+      # produces a confusing ovsx error deep in the log instead of naming the cause.
+      - name: Publish to Open VSX
+        if: github.ref_type == 'tag' || inputs.publish
+        env:
+          OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
+        run: |
+          if [ -z "$OPEN_VSX_TOKEN" ]; then
+            echo "::error::OPEN_VSX_TOKEN is not available in the 'cursor' environment."
+            exit 1
+          fi
+          publisher=$(node -p "require('./package.json').publisher")
+
+          # Open VSX rejects a publish into a namespace that does not exist yet,
+          # so create it on the first release. Only a definite 404 triggers
+          # creation: a network blip must not be mistaken for "missing", or the
+          # create call would fail with "already exists" and sink a good build.
+          status=$(curl -s -o /dev/null -w '%{http_code}' "https://open-vsx.org/api/${publisher}")
+          case "$status" in
+            404) npx --yes ovsx create-namespace "$publisher" -p "$OPEN_VSX_TOKEN" ;;
+            200) : ;;
+            *) echo "::warning::Could not check the '${publisher}' namespace (HTTP $status); letting the publish decide." ;;
+          esac
+
+          npx --yes ovsx publish "spectra-viewer-${VERSION}.vsix" -p "$OPEN_VSX_TOKEN"
+
+      # gh is preinstalled on GitHub runners, so this needs no third-party action.
+      # Only tag builds cut a release; a manual run stops after the artifact upload,
+      # even when it was asked to publish.
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "spectra-viewer-${VERSION}.vsix" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
