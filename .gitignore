@@ -5,3 +5,4 @@ node_modules/
 dist/
 openspec/.vector-search.db*
 .DS_Store
+*.vsix

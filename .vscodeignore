@@ -1,0 +1,13 @@
+.vscode/**
+src/**
+openspec/**
+.claude/**
+.cursor/**
+node_modules/**
+esbuild.mjs
+vitest.config.ts
+tsconfig.json
+.cursorrules
+CLAUDE.md
+**/*.map
+**/*.ts

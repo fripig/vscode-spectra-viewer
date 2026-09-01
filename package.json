@@ -1,0 +1,97 @@
+{
+  "name": "vscode-spectra-viewer",
+  "displayName": "Spectra Viewer",
+  "description": "Browse your Spectra changes — Active, Parked and Archived — without leaving the editor.",
+  "version": "0.1.0",
+  "publisher": "fripig",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fripig/vscode-spectra-viewer.git"
+  },
+  "keywords": [
+    "spectra",
+    "openspec",
+    "spec-driven",
+    "sdd"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onView:spectraChanges"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "spectra",
+          "title": "Spectra",
+          "icon": "resources/spectra.svg"
+        }
+      ]
+    },
+    "views": {
+      "spectra": [
+        {
+          "id": "spectraChanges",
+          "name": "Changes"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "spectraViewer.refresh",
+        "title": "Refresh",
+        "category": "Spectra",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "spectraViewer.openArtifact",
+        "title": "Open Artifact",
+        "category": "Spectra"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "spectraViewer.refresh",
+          "when": "view == spectraChanges",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "spectraViewer.openArtifact",
+          "when": "false"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "spectraChanges",
+        "contents": "This workspace is not initialised for Spectra.\n\nNo `openspec` directory was found in the first workspace folder.\n\n[Refresh](command:spectraViewer.refresh)",
+        "when": "!spectraViewer.initialised"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "vscode:prepublish": "npm run check-types && node esbuild.mjs --production"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
