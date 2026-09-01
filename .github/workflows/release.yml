@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: 'Also publish the committed version to Open VSX'
+        description: 'Publish the committed version to Open VSX'
         type: boolean
         default: false
 
@@ -74,8 +74,12 @@ jobs:
       #
       # The token check is not redundant. Without it a misnamed or missing secret
       # produces a confusing ovsx error deep in the log instead of naming the cause.
+      # Deliberately NOT triggered by the tag. Cutting a release and pushing to a
+      # marketplace are separate decisions: a tag should be safe to push while a
+      # namespace is still pending, or while a build is being sanity-checked.
+      # Publishing is an explicit manual run with the publish box ticked.
       - name: Publish to Open VSX
-        if: github.ref_type == 'tag' || inputs.publish
+        if: inputs.publish
         env:
           OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
         run: |
@@ -99,8 +103,8 @@ jobs:
           npx --yes ovsx publish "spectra-viewer-${VERSION}.vsix" -p "$OPEN_VSX_TOKEN"
 
       # gh is preinstalled on GitHub runners, so this needs no third-party action.
-      # Only tag builds cut a release; a manual run stops after the artifact upload,
-      # even when it was asked to publish.
+      # Only tag builds cut a release; a manual run stops after the artifact upload
+      # and, if asked, the publish.
       - name: Create GitHub Release
         if: github.ref_type == 'tag'
         env:
