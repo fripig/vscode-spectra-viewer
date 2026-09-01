@@ -28,15 +28,22 @@ Scanning always runs asynchronously and never blocks the editor.
 
 ## Installation
 
-Not published to a marketplace yet. Install from source:
+Not on a marketplace yet. Download the `.vsix` from the [latest release](https://github.com/fripig/vscode-spectra-viewer/releases/latest) and install it:
+
+```bash
+code --install-extension spectra-viewer-0.1.0.vsix
+```
+
+Or, in the editor: <kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → **Extensions: Install from VSIX…** → pick the file.
+
+VS Code forks such as Cursor work the same way — swap `code` for that editor's CLI. On macOS, where the CLI is often not on `PATH`, the Cursor one lives at `/Applications/Cursor.app/Contents/Resources/app/bin/cursor`.
+
+To build it yourself instead:
 
 ```bash
 npm install
-npx vsce package          # produces vscode-spectra-viewer-0.1.0.vsix
-code --install-extension vscode-spectra-viewer-0.1.0.vsix
+npx vsce package          # produces vscode-spectra-viewer-<version>.vsix
 ```
-
-VS Code forks such as Cursor work the same way — swap `code` for that editor's CLI.
 
 Requires VS Code 1.90 or later.
 

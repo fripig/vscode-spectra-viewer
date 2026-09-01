@@ -28,15 +28,22 @@ Spectra 會把暫存（parked）的變更移出 `openspec/changes/`、放進 git
 
 ## 安裝
 
-尚未上架 Marketplace。目前請從原始碼安裝：
+尚未上架 Marketplace。請到 [最新 release](https://github.com/fripig/vscode-spectra-viewer/releases/latest) 下載 `.vsix` 後安裝：
+
+```bash
+code --install-extension spectra-viewer-0.1.0.vsix
+```
+
+或在編輯器裡操作：<kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → **Extensions: Install from VSIX…** → 選那個檔案。
+
+Cursor 等 VS Code 分支同樣適用 —— 把 `code` 換成該編輯器的 CLI 即可。macOS 上這些 CLI 常不在 `PATH` 裡，Cursor 的位於 `/Applications/Cursor.app/Contents/Resources/app/bin/cursor`。
+
+想自己建置的話：
 
 ```bash
 npm install
-npx vsce package          # 產出 vscode-spectra-viewer-0.1.0.vsix
-code --install-extension vscode-spectra-viewer-0.1.0.vsix
+npx vsce package          # 產出 vscode-spectra-viewer-<version>.vsix
 ```
-
-Cursor 等 VS Code 分支同樣適用 —— 把 `code` 換成該編輯器的 CLI 即可。
 
 需求：VS Code 1.90 以上。
 
