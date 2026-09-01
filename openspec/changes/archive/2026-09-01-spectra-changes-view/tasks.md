@@ -13,12 +13,12 @@
 
 ## 3. 樹狀檢視
 
-- [ ] 3.1 **Display changes as a grouped tree** 與 **Order changes by name within groups** —— 對應設計決策「使用原生 VS Code Tree View API 呈現樹狀結構」：tree data provider 依序產出剛好三個群組節點 Active、Parked、Archived，各自顯示變更數量且數量為零時仍存在，其下的變更節點以不分大小寫的名稱升冪排序，再其下是以相對路徑為標籤的 artifact 節點。discovery 層發出的警告會顯示在 Spectra output channel。驗證方式：在 Extension Development Host 中開啟本 repository 手動確認三組渲染且計數正確、變更依字母序排列。
-- [ ] 3.2 **Show task progress on change nodes** 與 **Show change status as the node icon** —— 對應設計決策「推導變更狀態並以節點圖示呈現」：有進度資訊時變更節點的 description 帶出已完成與總計數字、沒有時保持空白；節點圖示在四種狀態之間彼此不同，而群組節點與 artifact 節點都不使用這四個圖示中的任何一個。驗證方式：對涵蓋四種狀態的 fixture 變更，以及一個沒有 tasks 檔的變更，手動確認。
-- [ ] 3.3 **給每個節點穩定識別碼，讓 refresh 保留展開狀態**：每個 tree item 帶有由群組、變更名稱與 artifact 相對路徑推導出的 id，在樹中唯一且在多次掃描之間不變。驗證方式：手動展開 Parked 群組與其中一個變更，觸發 Refresh，確認兩者仍展開，且程式中沒有任何明確的重新展開程式碼。
-- [ ] 3.4 **Open artifact files in the editor** —— 對應設計決策「透過擴充自訂指令開啟 artifact，而非直接使用 vscode.open」：點擊 artifact 節點會呼叫一個擴充自訂指令，先確認檔案存在再於編輯器分頁開啟；檔案自上次掃描後已被刪除時，改為顯示非阻斷式警告通知。點擊群組節點或變更節點只會展開或收合。驗證方式：手動點擊 `proposal.md` 確認開啟；在磁碟上刪掉某個 artifact 後點擊其過期節點，確認出現警告通知、沒有 modal 對話框、檢視仍可用。
-- [ ] 3.5 **Refresh on demand**：檢視標題列的 Refresh 指令會執行新掃描並重建樹，首次開啟檢視時執行初始掃描，目錄已消失的變更事後就只是不存在於樹上。驗證方式：手動對一個 active 變更執行 spectra park，觸發 Refresh 確認它從 Active 移到 Parked；接著刪掉一個變更目錄再 Refresh 一次，確認沒有拋出錯誤。
-- [ ] 3.6 **Indicate loading and uninitialised states** 與 **Scan only the first workspace folder** —— 對應設計決策「只掃描第一個 workspace folder」：掃描期間檢視上出現進度指示；第一個 workspace folder 沒有 `openspec` 目錄或根本沒開資料夾時，以 welcome 訊息取代樹；該目錄被建立並觸發 Refresh 後樹回來；其餘 workspace folder 既不被掃描也不顯示。驗證方式：分別對「沒有 openspec 的資料夾」「沒開資料夾的空視窗」「兩個資料夾都有變更的雙根工作區」手動確認。
+- [x] 3.1 **Display changes as a grouped tree** 與 **Order changes by name within groups** —— 對應設計決策「使用原生 VS Code Tree View API 呈現樹狀結構」：tree data provider 依序產出剛好三個群組節點 Active、Parked、Archived，各自顯示變更數量且數量為零時仍存在，其下的變更節點以不分大小寫的名稱升冪排序，再其下是以相對路徑為標籤的 artifact 節點。discovery 層發出的警告會顯示在 Spectra output channel。驗證方式：在 Extension Development Host 中開啟本 repository 手動確認三組渲染且計數正確、變更依字母序排列。
+- [x] 3.2 **Show task progress on change nodes** 與 **Show change status as the node icon** —— 對應設計決策「推導變更狀態並以節點圖示呈現」：有進度資訊時變更節點的 description 帶出已完成與總計數字、沒有時保持空白；節點圖示在四種狀態之間彼此不同，而群組節點與 artifact 節點都不使用這四個圖示中的任何一個。驗證方式：對涵蓋四種狀態的 fixture 變更，以及一個沒有 tasks 檔的變更，手動確認。
+- [x] 3.3 **給每個節點穩定識別碼，讓 refresh 保留展開狀態**：每個 tree item 帶有由群組、變更名稱與 artifact 相對路徑推導出的 id，在樹中唯一且在多次掃描之間不變。驗證方式：手動展開 Parked 群組與其中一個變更，觸發 Refresh，確認兩者仍展開，且程式中沒有任何明確的重新展開程式碼。
+- [x] 3.4 **Open artifact files in the editor** —— 對應設計決策「透過擴充自訂指令開啟 artifact，而非直接使用 vscode.open」：點擊 artifact 節點會呼叫一個擴充自訂指令，先確認檔案存在再於編輯器分頁開啟；檔案自上次掃描後已被刪除時，改為顯示非阻斷式警告通知。點擊群組節點或變更節點只會展開或收合。驗證方式：手動點擊 `proposal.md` 確認開啟；在磁碟上刪掉某個 artifact 後點擊其過期節點，確認出現警告通知、沒有 modal 對話框、檢視仍可用。
+- [x] 3.5 **Refresh on demand**：檢視標題列的 Refresh 指令會執行新掃描並重建樹，首次開啟檢視時執行初始掃描，目錄已消失的變更事後就只是不存在於樹上。驗證方式：手動對一個 active 變更執行 spectra park，觸發 Refresh 確認它從 Active 移到 Parked；接著刪掉一個變更目錄再 Refresh 一次，確認沒有拋出錯誤。
+- [x] 3.6 **Indicate loading and uninitialised states** 與 **Scan only the first workspace folder** —— 對應設計決策「只掃描第一個 workspace folder」：掃描期間檢視上出現進度指示；第一個 workspace folder 沒有 `openspec` 目錄或根本沒開資料夾時，以 welcome 訊息取代樹；該目錄被建立並觸發 Refresh 後樹回來；其餘 workspace folder 既不被掃描也不顯示。驗證方式：分別對「沒有 openspec 的資料夾」「沒開資料夾的空視窗」「兩個資料夾都有變更的雙根工作區」手動確認。
 
 ## 4. 文件
 
