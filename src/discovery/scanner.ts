@@ -29,6 +29,18 @@ async function subdirectories(dir: string, logger: Logger): Promise<string[]> {
   }
 }
 
+/**
+ * The directory a directory entry was found in.
+ *
+ * Node renamed `Dirent.path` to `Dirent.parentPath` in 20.12. VS Code 1.90 —
+ * the oldest release this extension supports — still ships the older name, so
+ * reading `parentPath` alone would leave every path undefined there and drop
+ * every change from the scan.
+ */
+export function direntDir(entry: { parentPath?: string; path?: string }): string {
+  return entry.parentPath ?? entry.path ?? ''
+}
+
 interface ArtifactScan {
   readonly artifacts: string[]
   /** Newest mtime among the Markdown files, or undefined when none is readable. */
@@ -52,12 +64,13 @@ async function collectArtifacts(changeDir: string): Promise<ArtifactScan> {
     if (!entry.isFile() || !entry.name.endsWith('.md')) {
       continue
     }
-    // parentPath is absolute; make it relative to the change directory.
-    const relativeDir = entry.parentPath.slice(changeDir.length).replace(/^[\\/]/, '')
+    // The entry directory is absolute; make it relative to the change directory.
+    const entryDir = direntDir(entry)
+    const relativeDir = entryDir.slice(changeDir.length).replace(/^[\\/]/, '')
     const relative = relativeDir === '' ? entry.name : join(relativeDir, entry.name)
     markdown.push({
       relative: relative.split(sep).join(posix.sep),
-      absolute: join(entry.parentPath, entry.name),
+      absolute: join(entryDir, entry.name),
     })
   }
 

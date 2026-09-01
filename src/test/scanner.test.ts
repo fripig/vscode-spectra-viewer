@@ -4,7 +4,7 @@ import { isAbsolute, join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ChangeGroup, ChangeStatus } from '../discovery/model'
-import { isSpectraWorkspace, scanChanges } from '../discovery/scanner'
+import { direntDir, isSpectraWorkspace, scanChanges } from '../discovery/scanner'
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(join(tmpdir(), 'spectra-scan-'))
@@ -313,5 +313,24 @@ describe('Report per-change metadata — creation date and proposer in the snaps
     const [change] = (await scanChanges(root))[ChangeGroup.Archived]
 
     expect(change!.proposer).toBe('alice')
+  })
+})
+
+describe('Report per-change metadata — Dirent compatibility', () => {
+  it('reads the directory from parentPath when the runtime provides it', () => {
+    expect(direntDir({ parentPath: '/a/b', path: '/legacy' })).toBe('/a/b')
+  })
+
+  it('falls back to path on runtimes predating the parentPath rename', () => {
+    // Node renamed Dirent.path to parentPath in 20.12; VS Code 1.90, the oldest
+    // release this extension supports, still ships the older name.
+    expect(direntDir({ path: '/a/b' })).toBe('/a/b')
+  })
+
+  it('never reads parentPath without a fallback, so an older Dirent cannot break the scan', async () => {
+    const source = await readFile(join(__dirname, '..', 'discovery', 'scanner.ts'), 'utf8')
+
+    // The one guarded read inside direntDir is fine; a bare one anywhere is not.
+    expect(source).not.toMatch(/entry\.parentPath(?!\s*\?\?)/)
   })
 })
