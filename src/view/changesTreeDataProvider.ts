@@ -1,12 +1,13 @@
 import * as vscode from 'vscode'
 import { isSpectraWorkspace, scanChanges } from '../discovery/scanner'
 import type { ChangeSnapshot, Logger } from '../discovery/model'
+import { ChangeOrder, DEFAULT_ORDER } from './changeOrder'
 import {
   ARTIFACT_ICON,
   GROUP_ICON,
   childrenOf,
   nodeId,
-  progressDescription,
+  nodeDescription,
   rootNodes,
   statusIcon,
   type SpectraNode,
@@ -14,9 +15,12 @@ import {
 
 /** Context key the welcome view is gated on. */
 export const INITIALISED_CONTEXT = 'spectraViewer.initialised'
+/** Context key the sort menu reads to hide the option already in effect. */
+export const ORDER_CONTEXT = 'spectraViewer.order'
 
 export class ChangesTreeDataProvider implements vscode.TreeDataProvider<SpectraNode> {
   private snapshot: ChangeSnapshot | undefined
+  private order: ChangeOrder = DEFAULT_ORDER
   private readonly changed = new vscode.EventEmitter<void>()
 
   readonly onDidChangeTreeData = this.changed.event
@@ -40,8 +44,9 @@ export class ChangesTreeDataProvider implements vscode.TreeDataProvider<SpectraN
         item.collapsibleState = vscode.TreeItemCollapsibleState.Expanded
         break
       case 'change': {
-        // Left unset when there is no progress, so no placeholder is shown.
-        const description = progressDescription(node.change)
+        // Proposer then counts; left unset entirely when neither exists, so
+        // no placeholder is shown.
+        const description = nodeDescription(node.change)
         if (description !== undefined) {
           item.description = description
         }
@@ -72,7 +77,7 @@ export class ChangesTreeDataProvider implements vscode.TreeDataProvider<SpectraN
 
   async getChildren(node?: SpectraNode): Promise<SpectraNode[]> {
     if (node !== undefined) {
-      return childrenOf(node)
+      return childrenOf(node, this.order)
     }
 
     const root = ChangesTreeDataProvider.projectRoot()
@@ -85,6 +90,22 @@ export class ChangesTreeDataProvider implements vscode.TreeDataProvider<SpectraN
 
     this.snapshot ??= await scanChanges(root, this.logger)
     return rootNodes(this.snapshot)
+  }
+
+  get currentOrder(): ChangeOrder {
+    return this.order
+  }
+
+  /**
+   * Switches the sort option and rebuilds the tree from the snapshot already
+   * in hand — changing the order never touches the file system.
+   */
+  setOrder(order: ChangeOrder): void {
+    if (order === this.order) {
+      return
+    }
+    this.order = order
+    this.changed.fire()
   }
 
   /** Drops the cached snapshot and rescans, with a progress bar on the view. */

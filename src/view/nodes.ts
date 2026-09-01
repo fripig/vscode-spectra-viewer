@@ -5,6 +5,7 @@
  * a `TreeItem` is the tree data provider's job, so the structure, ordering,
  * labelling and identity rules stay unit-testable in plain Node.
  */
+import { ChangeOrder, DEFAULT_ORDER, comparatorFor } from './changeOrder'
 import {
   ChangeGroup,
   ChangeStatus,
@@ -46,15 +47,6 @@ const GROUP_ORDER: ReadonlyArray<readonly [ChangeGroup, string]> = [
   [ChangeGroup.Archived, 'Archived'],
 ]
 
-function byNameAscending(a: SpectraChange, b: SpectraChange): number {
-  const left = a.name.toLowerCase()
-  const right = b.name.toLowerCase()
-  if (left < right) return -1
-  if (left > right) return 1
-  // Same name ignoring case: fall back to the raw name so the order is total.
-  return a.name < b.name ? -1 : a.name > b.name ? 1 : 0
-}
-
 /** The three group nodes. Always all three, even when a group is empty. */
 export function rootNodes(snapshot: ChangeSnapshot): GroupNode[] {
   return GROUP_ORDER.map(([group, label]) => {
@@ -63,10 +55,16 @@ export function rootNodes(snapshot: ChangeSnapshot): GroupNode[] {
   })
 }
 
-export function childrenOf(node: SpectraNode): SpectraNode[] {
+/**
+ * A node's children, with group members ordered by the caller's sort option.
+ *
+ * Only the change level is sorted: the three groups keep their fixed order,
+ * and artifacts keep the string order discovery reported.
+ */
+export function childrenOf(node: SpectraNode, order: ChangeOrder = DEFAULT_ORDER): SpectraNode[] {
   switch (node.kind) {
     case 'group':
-      return [...node.changes].sort(byNameAscending).map((change) => ({
+      return [...node.changes].sort(comparatorFor(order)).map((change) => ({
         kind: 'change' as const,
         label: change.name,
         change,
@@ -111,6 +109,21 @@ export function statusIcon(status: ChangeStatus): string {
 export function progressDescription(change: SpectraChange): string | undefined {
   const progress = change.progress
   return progress === undefined ? undefined : `${progress.complete}/${progress.total}`
+}
+
+/**
+ * The full de-emphasised segment beside a change name: proposer, then counts.
+ *
+ * The counts stay last so their position never shifts with the length of the
+ * proposer name, and an unknown proposer contributes nothing at all rather
+ * than a placeholder. Identical in all three groups; an archived change shows
+ * whoever proposed it, since that is the only name discovery reports.
+ */
+export function nodeDescription(change: SpectraChange): string | undefined {
+  const parts = [change.proposer, progressDescription(change)].filter(
+    (part): part is string => part !== undefined && part !== '',
+  )
+  return parts.length === 0 ? undefined : parts.join(' ')
 }
 
 /**

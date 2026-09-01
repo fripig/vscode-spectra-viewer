@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { ChangeGroup, ChangeStatus, type ChangeSnapshot, type SpectraChange } from '../discovery/model'
+import { ChangeOrder } from '../view/changeOrder'
 import {
   ARTIFACT_ICON,
   GROUP_ICON,
   childrenOf,
+  nodeDescription,
   nodeId,
   progressDescription,
   rootNodes,
@@ -78,43 +80,6 @@ describe('Display changes as a grouped tree', () => {
     const [artifact] = childrenOf(changeNode!)
 
     expect(childrenOf(artifact!)).toEqual([])
-  })
-})
-
-describe('Order changes by name within groups', () => {
-  const orderIn = (group: GroupNode): string[] =>
-    (childrenOf(group) as ChangeNode[]).map((c) => c.change.name)
-
-  it('lists changes alphabetically regardless of snapshot order', () => {
-    const [active] = rootNodes(
-      snapshot({
-        [ChangeGroup.Active]: [change('zebra-fix'), change('add-search'), change('mid-tier')],
-      }),
-    )
-
-    expect(orderIn(active!)).toEqual(['add-search', 'mid-tier', 'zebra-fix'])
-  })
-
-  it('compares names case-insensitively', () => {
-    // The spec's "case-insensitive ordering" example, with its exact names.
-    const [active] = rootNodes(
-      snapshot({
-        [ChangeGroup.Active]: [change('Zebra-fix'), change('add-search'), change('Mid-tier')],
-      }),
-    )
-
-    expect(orderIn(active!)).toEqual(['add-search', 'Mid-tier', 'Zebra-fix'])
-  })
-
-  it('does not reorder the three groups themselves', () => {
-    const groups = rootNodes(
-      snapshot({
-        [ChangeGroup.Archived]: [change('old-login', ChangeGroup.Archived)],
-        [ChangeGroup.Parked]: [change('dark-mode', ChangeGroup.Parked)],
-      }),
-    )
-
-    expect(groups.map((g) => g.label)).toEqual(['Active', 'Parked', 'Archived'])
   })
 })
 
@@ -215,5 +180,104 @@ describe('給每個節點穩定識別碼，讓 refresh 保留展開狀態', () =
       nodeId(childrenOf(rootNodes(snapshot({ [ChangeGroup.Active]: [c] }))[0]!)[0]!)
 
     expect(idOf(before)).toBe(idOf(after))
+  })
+})
+
+describe('Show the proposer on change nodes', () => {
+  const withMeta = (
+    name: string,
+    proposer?: string,
+    progress?: { complete: number; total: number },
+  ): SpectraChange => ({ ...change(name), proposer, progress })
+
+  // One row per line of the spec's "node text by proposer and progress" table.
+  const rows = [
+    { proposer: 'fripig', progress: { complete: 3, total: 8 }, expected: 'fripig 3/8' },
+    { proposer: undefined, progress: { complete: 3, total: 8 }, expected: '3/8' },
+    { proposer: 'fripig', progress: undefined, expected: 'fripig' },
+    { proposer: undefined, progress: undefined, expected: undefined },
+  ]
+
+  it.each(rows)('proposer=$proposer progress=$progress', ({ proposer, progress, expected }) => {
+    expect(nodeDescription(withMeta('add-dark-mode', proposer, progress))).toBe(expected)
+  })
+
+  it('puts the proposer between the name and the counts, with counts last', () => {
+    const description = nodeDescription(withMeta('add-dark-mode', 'fripig', { complete: 3, total: 8 }))!
+
+    expect(description.indexOf('fripig')).toBeLessThan(description.indexOf('3/8'))
+    expect(description.endsWith('3/8')).toBe(true)
+  })
+
+  it('keeps the counts in the same trailing position whatever the proposer length', () => {
+    const short = nodeDescription(withMeta('c', 'al', { complete: 3, total: 8 }))!
+    const long = nodeDescription(withMeta('c', 'a-very-long-proposer-name', { complete: 3, total: 8 }))!
+
+    expect(short.endsWith('3/8')).toBe(true)
+    expect(long.endsWith('3/8')).toBe(true)
+  })
+
+  it('shows the proposer in every group', () => {
+    for (const group of [ChangeGroup.Active, ChangeGroup.Parked, ChangeGroup.Archived]) {
+      const c: SpectraChange = { ...change('add-dark-mode', group), proposer: 'fripig' }
+      expect(nodeDescription(c)).toContain('fripig')
+    }
+  })
+
+  it('leaves no placeholder text when the proposer is unknown', () => {
+    expect(nodeDescription(withMeta('add-dark-mode', undefined, { complete: 3, total: 8 }))).toBe('3/8')
+  })
+})
+
+describe('Sort changes within groups — tree rebuild', () => {
+  const dated = (name: string, created?: string, modified?: string): SpectraChange => ({
+    ...change(name),
+    created: created === undefined ? undefined : new Date(created),
+    modified: modified === undefined ? undefined : new Date(modified),
+  })
+
+  /** The spec's three-change example. */
+  const active = (): SpectraChange[] => [
+    dated('add-search', '2026-08-10T00:00:00Z', '2026-08-12T09:00:00Z'),
+    dated('mid-tier', '2026-08-12T00:00:00Z', '2026-08-11T17:00:00Z'),
+    dated('zebra-fix', undefined, '2026-08-13T08:00:00Z'),
+  ]
+
+  const namesUnder = (group: GroupNode, by: ChangeOrder): string[] =>
+    (childrenOf(group, by) as ChangeNode[]).map((c) => c.change.name)
+
+  it('reorders each group according to the selected option', () => {
+    const [group] = rootNodes(snapshot({ [ChangeGroup.Active]: active() }))
+
+    expect(namesUnder(group!, ChangeOrder.Name)).toEqual(['add-search', 'mid-tier', 'zebra-fix'])
+    expect(namesUnder(group!, ChangeOrder.Modified)).toEqual(['zebra-fix', 'add-search', 'mid-tier'])
+    expect(namesUnder(group!, ChangeOrder.Created)).toEqual(['mid-tier', 'add-search', 'zebra-fix'])
+  })
+
+  it('defaults to Modified when no option is given', () => {
+    const [group] = rootNodes(snapshot({ [ChangeGroup.Active]: active() }))
+
+    expect((childrenOf(group!) as ChangeNode[]).map((c) => c.change.name)).toEqual([
+      'zebra-fix',
+      'add-search',
+      'mid-tier',
+    ])
+  })
+
+  it('never reorders the three groups themselves', () => {
+    for (const by of [ChangeOrder.Name, ChangeOrder.Modified, ChangeOrder.Created]) {
+      const groups = rootNodes(snapshot({ [ChangeGroup.Active]: active() }))
+      expect(groups.map((g) => g.label)).toEqual(['Active', 'Parked', 'Archived'])
+      // The order argument must not leak into the group level.
+      expect(namesUnder(groups[0]!, by).length).toBe(3)
+    }
+  })
+
+  it('keeps node ids stable across a sort change', () => {
+    const [group] = rootNodes(snapshot({ [ChangeGroup.Active]: active() }))
+    const idsFor = (by: ChangeOrder): string[] =>
+      (childrenOf(group!, by) as ChangeNode[]).map(nodeId).sort()
+
+    expect(idsFor(ChangeOrder.Name)).toEqual(idsFor(ChangeOrder.Created))
   })
 })

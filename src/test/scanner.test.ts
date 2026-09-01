@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, mkdir, readFile, readdir, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { existsSync } from 'node:fs'
@@ -222,5 +222,96 @@ describe('Indicate loading and uninitialised states', () => {
     await writeFile(join(root, 'openspec'), 'not a directory\n', 'utf8')
 
     expect(await isSpectraWorkspace(root)).toBe(false)
+  })
+})
+
+describe('Report per-change metadata — modification date', () => {
+  it('reports the most recent modification time among the Markdown files', async () => {
+    // The spec's "newest Markdown file wins" example, with its exact timestamps.
+    const root = await tempRoot()
+    const dir = join(root, 'openspec', 'changes', 'add-search')
+    await makeChange(dir, { 'proposal.md': '', 'tasks.md': '' })
+    const older = new Date('2026-08-11T17:00:00Z')
+    const newer = new Date('2026-08-12T09:00:00Z')
+    await utimes(join(dir, 'proposal.md'), older, older)
+    await utimes(join(dir, 'tasks.md'), newer, newer)
+
+    const [change] = (await scanChanges(root))[ChangeGroup.Active]
+
+    expect(change!.modified?.getTime()).toBe(newer.getTime())
+  })
+
+  it('reports no modification date for a change with no Markdown files', async () => {
+    const root = await tempRoot()
+    await makeChange(join(root, 'openspec', 'changes', 'add-search'), {
+      '.openspec.yaml': 'created: 2026-08-10\n',
+    })
+
+    expect((await scanChanges(root))[ChangeGroup.Active][0]!.modified).toBeUndefined()
+  })
+
+  it('ignores non-Markdown files when picking the modification date', async () => {
+    const root = await tempRoot()
+    const dir = join(root, 'openspec', 'changes', 'add-search')
+    await makeChange(dir, { 'proposal.md': '', '.openspec.yaml': '' })
+    const markdown = new Date('2026-08-11T17:00:00Z')
+    const yaml = new Date('2026-08-20T09:00:00Z')
+    await utimes(join(dir, 'proposal.md'), markdown, markdown)
+    await utimes(join(dir, '.openspec.yaml'), yaml, yaml)
+
+    const [change] = (await scanChanges(root))[ChangeGroup.Active]
+
+    expect(change!.modified?.getTime()).toBe(markdown.getTime())
+  })
+})
+
+describe('Report per-change metadata — creation date and proposer in the snapshot', () => {
+  it('reports both fields from one metadata file', async () => {
+    const root = await tempRoot()
+    await makeChange(join(root, 'openspec', 'changes', 'add-search'), {
+      '.openspec.yaml': 'created: 2026-08-10\ncreated_by: fripig <fripig@gmail.com>\n',
+      'proposal.md': '',
+    })
+
+    const [change] = (await scanChanges(root))[ChangeGroup.Active]
+
+    expect(change!.created?.toISOString().slice(0, 10)).toBe('2026-08-10')
+    expect(change!.proposer).toBe('fripig')
+  })
+
+  it('lets one unusable field leave the other intact', async () => {
+    const root = await tempRoot()
+    await makeChange(join(root, 'openspec', 'changes', 'add-search'), {
+      '.openspec.yaml': 'created: last Tuesday\ncreated_by: fripig <fripig@gmail.com>\n',
+    })
+
+    const [change] = (await scanChanges(root))[ChangeGroup.Active]
+
+    expect(change!.created).toBeUndefined()
+    expect(change!.proposer).toBe('fripig')
+  })
+
+  it('keeps a change in the snapshot when the metadata file is absent', async () => {
+    const root = await tempRoot()
+    await makeChange(join(root, 'openspec', 'changes', 'add-search'), { 'proposal.md': '' })
+
+    const [change] = (await scanChanges(root))[ChangeGroup.Active]
+
+    expect(change!.name).toBe('add-search')
+    expect(change!.created).toBeUndefined()
+    expect(change!.proposer).toBeUndefined()
+    expect(change!.artifacts).toEqual(['proposal.md'])
+  })
+
+  it('reports the proposer of an archived change rather than its archiver', async () => {
+    const root = await tempRoot()
+    await makeChange(join(root, 'openspec', 'changes', 'archive', 'old-login'), {
+      '.openspec.yaml':
+        'created_by: alice <alice@example.com>\narchived_by: bob <bob@example.com>\n',
+    })
+
+    const [change] = (await scanChanges(root))[ChangeGroup.Archived]
+
+    expect(change!.proposer).toBe('alice')
   })
 })

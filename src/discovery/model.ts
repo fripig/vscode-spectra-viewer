@@ -38,6 +38,12 @@ export interface SpectraChange {
   /** Absent when the change has no counted checkbox. */
   readonly progress?: TaskProgress | undefined
   readonly status: ChangeStatus
+  /** From `.openspec.yaml`; absent when missing or unparsable. */
+  readonly created?: Date | undefined
+  /** Display name from `.openspec.yaml`; absent when unknown. */
+  readonly proposer?: string | undefined
+  /** Newest mtime among the change's Markdown files; absent when none. */
+  readonly modified?: Date | undefined
 }
 
 /** The result of one scan: the three groups, in unspecified order within each. */

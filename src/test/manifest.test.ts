@@ -71,3 +71,45 @@ describe('Indicate loading and uninitialised states', () => {
     expect(entry!.contents).toMatch(/openspec/i)
   })
 })
+
+describe('Sort changes within groups — manifest contributions', () => {
+  const SORT_COMMANDS = [
+    'spectraViewer.sortByName',
+    'spectraViewer.sortByModified',
+    'spectraViewer.sortByCreated',
+  ]
+  const ORDER_CONTEXT = 'spectraViewer.order'
+
+  it('contributes exactly one command per sort option', async () => {
+    const ids: string[] = ((await manifest()).contributes?.commands ?? []).map(
+      (c: { command: string }) => c.command,
+    )
+
+    for (const command of SORT_COMMANDS) {
+      expect(ids).toContain(command)
+    }
+  })
+
+  it('puts every sort option in the Changes view title menu', async () => {
+    const titleItems: Array<{ command: string; when?: string; group?: string }> =
+      ((await manifest()).contributes?.menus ?? {})['view/title'] ?? []
+
+    for (const command of SORT_COMMANDS) {
+      const item = titleItems.find((i) => i.command === command)
+      expect(item, `${command} must appear in view/title`).toBeDefined()
+      expect(item!.when).toContain('spectraChanges')
+    }
+  })
+
+  it('gates each sort option checkmark on the order context key', async () => {
+    const titleItems: Array<{ command: string; when?: string }> =
+      ((await manifest()).contributes?.menus ?? {})['view/title'] ?? []
+    const whens = SORT_COMMANDS.map((c) => titleItems.find((i) => i.command === c)!.when!)
+
+    for (const when of whens) {
+      expect(when).toContain(ORDER_CONTEXT)
+    }
+    // Mutually exclusive: no two options can be checked by the same condition.
+    expect(new Set(whens).size).toBe(SORT_COMMANDS.length)
+  })
+})

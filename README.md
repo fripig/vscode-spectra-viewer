@@ -13,6 +13,8 @@ Spectra 會把暫存（parked）的變更移出 `openspec/changes/`、放進 git
 - **三組並列**：Active（`openspec/changes/`）、Parked（git 目錄下的 `spectra-app/changes/`）、Archived（`openspec/changes/archive/`）。群組節點顯示變更數量，數量為零時節點依然存在。
 - **任務進度**：解析每個變更的 `tasks.md`，在節點上顯示「已完成／總計」。圍籬程式碼區塊裡的 checkbox 會被忽略。
 - **狀態圖示**：由任務進度推導出 Draft、Not Started、In Progress、Complete 四種狀態，各自對應不同圖示。
+- **提案人**：讀取每個變更 `.openspec.yaml` 的 `created_by`，顯示在變更名稱與任務進度之間，三個群組皆適用。只顯示名字、不顯示 email；沒有可用名字時不顯示任何佔位文字。已歸檔的變更顯示的是提出者，不是歸檔者。
+- **排序**：Name、Modified、Created 三選一，預設 Modified（最新在前）。目前選項顯示在檢視標題旁，選單只列出可切換的選項。日期未知的變更一律排在最後，日期相同者以名稱升冪排列。切換排序只重建樹，不重新掃描檔案系統。
 - **開啟文件**：點擊 artifact 節點即在編輯器開啟該 Markdown。檔案若已被刪除，會得到一則非阻斷式警告，而不是錯誤對話框。
 - **重新整理**：標題列的 Refresh 會重新掃描；展開狀態會保留。
 - **git worktree 支援**：`.git` 是檔案時，會依 `gitdir:` 與 `commondir` 解析出真正的 git 目錄，並從那裡找出暫存的變更。
@@ -37,8 +39,6 @@ Cursor 等 VS Code 分支同樣適用 —— 把 `code` 換成該編輯器的 CL
 
 以下功能在參考用的 JetBrains 外掛裡有，但這個版本**還沒有**，將由後續版本補上：
 
-- 顯示提案人（`.openspec.yaml` 的 `created_by`）
-- 依 Name／Modified／Created 排序
 - 依名稱篩選
 - 複製變更名稱到剪貼簿
 - 把 `/spectra-apply` 等指令送進整合終端機

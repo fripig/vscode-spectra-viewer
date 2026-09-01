@@ -1,4 +1,5 @@
 import { readdir, stat } from 'node:fs/promises'
+import { readChangeMetadata } from './changeMetadata'
 import { join, posix, sep } from 'node:path'
 import { resolveGitDir } from './gitDir'
 import {
@@ -28,10 +29,24 @@ async function subdirectories(dir: string, logger: Logger): Promise<string[]> {
   }
 }
 
-/** Collects every `.md` file beneath a change, as relative POSIX-style paths. */
-async function collectArtifacts(changeDir: string): Promise<string[]> {
+interface ArtifactScan {
+  readonly artifacts: string[]
+  /** Newest mtime among the Markdown files, or undefined when none is readable. */
+  readonly modified: Date | undefined
+}
+
+/**
+ * Collects every `.md` file beneath a change, as relative POSIX-style paths,
+ * and the newest modification time among them.
+ *
+ * The mtimes come from the same walk that lists the artifacts, so reporting a
+ * modification date costs one stat per Markdown file and no extra traversal.
+ * A file whose mtime cannot be read drops out of the comparison rather than
+ * failing the scan.
+ */
+async function collectArtifacts(changeDir: string): Promise<ArtifactScan> {
   const entries = await readdir(changeDir, { withFileTypes: true, recursive: true })
-  const artifacts: string[] = []
+  const markdown: Array<{ relative: string; absolute: string }> = []
 
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith('.md')) {
@@ -40,10 +55,27 @@ async function collectArtifacts(changeDir: string): Promise<string[]> {
     // parentPath is absolute; make it relative to the change directory.
     const relativeDir = entry.parentPath.slice(changeDir.length).replace(/^[\\/]/, '')
     const relative = relativeDir === '' ? entry.name : join(relativeDir, entry.name)
-    artifacts.push(relative.split(sep).join(posix.sep))
+    markdown.push({
+      relative: relative.split(sep).join(posix.sep),
+      absolute: join(entry.parentPath, entry.name),
+    })
   }
 
-  return artifacts.sort()
+  const times = await Promise.all(
+    markdown.map(async ({ absolute }) => {
+      try {
+        return (await stat(absolute)).mtime.getTime()
+      } catch {
+        return undefined
+      }
+    }),
+  )
+  const readable = times.filter((t): t is number => t !== undefined)
+
+  return {
+    artifacts: markdown.map((m) => m.relative).sort(),
+    modified: readable.length === 0 ? undefined : new Date(Math.max(...readable)),
+  }
 }
 
 async function readChange(
@@ -54,11 +86,22 @@ async function readChange(
 ): Promise<SpectraChange | undefined> {
   const path = join(parentDir, name)
   try {
-    const [artifacts, progress] = await Promise.all([
+    const [scan, progress, metadata] = await Promise.all([
       collectArtifacts(path),
       readTaskProgress(path),
+      readChangeMetadata(path),
     ])
-    return { name, group, path, artifacts, progress, status: deriveStatus(progress) }
+    return {
+      name,
+      group,
+      path,
+      artifacts: scan.artifacts,
+      progress,
+      status: deriveStatus(progress),
+      created: metadata.created,
+      proposer: metadata.proposer,
+      modified: scan.modified,
+    }
   } catch (error) {
     logger.warn(`Skipping unreadable change ${path}: ${String(error)}`)
     return undefined

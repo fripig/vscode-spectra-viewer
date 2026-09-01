@@ -54,6 +54,21 @@
         "command": "spectraViewer.openArtifact",
         "title": "Open Artifact",
         "category": "Spectra"
+      },
+      {
+        "command": "spectraViewer.sortByName",
+        "title": "Sort by Name",
+        "category": "Spectra"
+      },
+      {
+        "command": "spectraViewer.sortByModified",
+        "title": "Sort by Modified",
+        "category": "Spectra"
+      },
+      {
+        "command": "spectraViewer.sortByCreated",
+        "title": "Sort by Created",
+        "category": "Spectra"
       }
     ],
     "menus": {
@@ -62,6 +77,21 @@
           "command": "spectraViewer.refresh",
           "when": "view == spectraChanges",
           "group": "navigation"
+        },
+        {
+          "command": "spectraViewer.sortByName",
+          "when": "view == spectraChanges && spectraViewer.order != name",
+          "group": "sort@1"
+        },
+        {
+          "command": "spectraViewer.sortByModified",
+          "when": "view == spectraChanges && spectraViewer.order != modified",
+          "group": "sort@1"
+        },
+        {
+          "command": "spectraViewer.sortByCreated",
+          "when": "view == spectraChanges && spectraViewer.order != created",
+          "group": "sort@1"
         }
       ],
       "commandPalette": [
