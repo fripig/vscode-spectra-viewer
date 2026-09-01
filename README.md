@@ -1,71 +1,75 @@
 # Spectra Viewer
 
-在 VS Code 裡瀏覽你的 [Spectra](https://spectra.5xcamp.us/) 變更，不必切換到終端機。
+*English · [繁體中文](README.zh-TW.md)*
 
-Spectra 會把暫存（parked）的變更移出 `openspec/changes/`、放進 git 目錄底下，於是它們在檔案總管裡完全看不見。這個擴充在活動列加上一個 **Spectra** 檢視，把 Active、Parked、Archived 三組變更並列出來，顯示各自的任務進度，並讓你直接點開它們的 Markdown 文件。
+Browse your [Spectra](https://spectra.5xcamp.us/) changes inside VS Code — no switching to the terminal.
 
-擴充只讀檔案。它**不需要 Spectra 應用程式在執行**，也從不碰 Spectra 的內部資料庫。
+Spectra moves parked changes out of `openspec/changes/` into the git directory, which makes them invisible in the explorer. This extension adds a **Spectra** view to the activity bar that lists Active, Parked, and Archived changes side by side, shows the task progress of each, opens their Markdown documents in the editor, and hands the matching Spectra command straight to your terminal.
 
-> **非官方專案**：這是社群自建的第三方擴充，與 Spectra 官方無關，亦未經其背書。所有 Spectra 相關名稱均屬其各自擁有者。
+The extension reads files directly. It **does not require the Spectra app to be running**, and it never touches Spectra's internal database.
 
-## 功能
+> **Unofficial project**: This is a community-built third-party extension. It is not affiliated with, nor endorsed by, Spectra. All Spectra-related names belong to their respective owners.
 
-- **三組並列**：Active（`openspec/changes/`）、Parked（git 目錄下的 `spectra-app/changes/`）、Archived（`openspec/changes/archive/`）。群組節點顯示變更數量，數量為零時節點依然存在。
-- **任務進度**：解析每個變更的 `tasks.md`，在節點上顯示「已完成／總計」。圍籬程式碼區塊裡的 checkbox 會被忽略。
-- **狀態圖示**：由任務進度推導出 Draft、Not Started、In Progress、Complete 四種狀態，各自對應不同圖示。
-- **提案人**：讀取每個變更 `.openspec.yaml` 的 `created_by`，顯示在變更名稱與任務進度之間，三個群組皆適用。只顯示名字、不顯示 email；沒有可用名字時不顯示任何佔位文字。已歸檔的變更顯示的是提出者，不是歸檔者。
-- **排序**：Name、Modified、Created 三選一，預設 Modified（最新在前）。目前選項顯示在檢視標題旁，選單只列出可切換的選項。日期未知的變更一律排在最後，日期相同者以名稱升冪排列。切換排序只重建樹，不重新掃描檔案系統。
-- **依名稱篩選**：標題列的篩選按鈕開啟輸入框，輸入的文字以不分大小寫的方式比對變更名稱，三個群組同時套用；篩選期間群組節點同時顯示符合數與總數，被篩掉的變更不會被誤讀為不存在。只比對名稱，artifact 路徑與提案人都不參與，符合的變更其 artifact 全部保留。清空輸入即取消篩選。
-- **複製變更名稱**：選取一或多個變更後按複製鍵，或用右鍵選單，剪貼簿得到那些名稱，每行一個。只有名稱 —— 不含群組、提案人與進度數字。快捷鍵只在這個檢視有焦點時生效。
-- **送出 Spectra 指令**：右鍵變更選 **Spectra Command…**，挑一個已經帶好變更名稱的完整指令（`/spectra-apply`、`/spectra-ingest`、`/spectra-archive`、`/spectra-commit`）。指令會寫進你當下的終端機但**不會被執行** —— 停在輸入位置等你自己按 Enter，所以選錯分頁的代價只是一行可以刪掉的文字。沒有作用中的終端機時改寫入剪貼簿，選單標題會告訴你接下來是哪一種。
-- **開啟文件**：點擊 artifact 節點即在編輯器開啟該 Markdown。檔案若已被刪除，會得到一則非阻斷式警告，而不是錯誤對話框。
-- **重新整理**：標題列的 Refresh 會重新掃描；展開狀態會保留。
-- **git worktree 支援**：`.git` 是檔案時，會依 `gitdir:` 與 `commondir` 解析出真正的 git 目錄，並從那裡找出暫存的變更。
+## Features
 
-掃描一律非同步執行，不會阻塞編輯器。
+- **Three groups side by side**: Active (`openspec/changes/`), Parked (`spectra-app/changes/` under the git directory), and Archived (`openspec/changes/archive/`). Group nodes show the change count, and stay visible even when the count is zero.
+- **Task progress**: Parses each change's `tasks.md` and shows "completed/total" on the node. Checkboxes inside fenced code blocks are ignored.
+- **Status icon**: Draft, Not Started, In Progress and Complete are derived from task progress, each with its own icon.
+- **Proposer**: Reads `created_by` from each change's `.openspec.yaml` and shows it between the change name and the task progress, in all three groups. Only the name is shown — the email address is dropped. A change with no usable name shows no proposer and no placeholder. An archived change shows whoever proposed it, not whoever archived it.
+- **Sorting**: Name, Modified or Created — Modified (newest first) is the default. The current option is shown beside the view title, and the menu lists only the options you can switch to. Changes with an unknown date always sort last; those sharing a date fall back to name order. Sorting only rebuilds the tree — it never rescans.
+- **Filter by name**: The filter button in the title bar opens an input box; the text is matched case-insensitively against change names across all three groups. While filtering, group nodes show both the matching count and the total, so filtered-out changes cannot be mistaken for missing data. Only names are matched — artifact paths and the proposer are not — and every artifact of a matching change stays visible. Clearing the input clears the filter.
+- **Copy change names**: Select one or more changes and press the copy shortcut, or use the context menu. You get the names alone, one per line — no group prefix, no proposer, no progress counts. The shortcut applies only while this view has focus.
+- **Send a Spectra command**: Right-click a change and choose **Spectra Command…**, then pick one of `/spectra-apply`, `/spectra-ingest`, `/spectra-archive` or `/spectra-commit` — each already carrying that change's name. The command is typed into your active terminal but **never run**: it waits at the prompt until you press Enter yourself, so picking the wrong tab costs nothing more than a line you can delete. With no active terminal, the same text goes to the clipboard instead, and the picker title tells you which of the two is about to happen.
+- **Open documents**: Click an artifact node to open its Markdown in the editor. If the file has been deleted, you get a non-blocking warning instead of an error dialog.
+- **Refresh**: Re-scanning from the title bar preserves the expanded state and the filter text.
+- **Git worktree support**: When `.git` is a file, the real git directory is resolved via `gitdir:` and `commondir`, and parked changes are located from there.
 
-## 安裝
+Scanning always runs asynchronously and never blocks the editor.
 
-尚未上架 Marketplace。目前請從原始碼安裝：
+## Installation
+
+Not published to a marketplace yet. Install from source:
 
 ```bash
 npm install
-npx vsce package          # 產出 vscode-spectra-viewer-0.1.0.vsix
+npx vsce package          # produces vscode-spectra-viewer-0.1.0.vsix
 code --install-extension vscode-spectra-viewer-0.1.0.vsix
 ```
 
-Cursor 等 VS Code 分支同樣適用 —— 把 `code` 換成該編輯器的 CLI 即可。
+VS Code forks such as Cursor work the same way — swap `code` for that editor's CLI.
 
-需求：VS Code 1.90 以上。
+Requires VS Code 1.90 or later.
 
-## 與 JetBrains 版的差異
+## Differences from the JetBrains plugin
 
-參考用的 JetBrains 外掛的功能都已移植完成。兩處刻意的行為差異：
+Every feature of the reference JetBrains plugin has been ported. Two behaviours differ on purpose:
 
-- **篩選是「輸入後套用」，不是邊打邊縮。** VS Code 的 tree view 沒有可放輸入控制項的位置，所以篩選由指令搭配輸入框驅動。目前篩選字持續顯示在檢視標題旁。
-- **多根工作區只掃描第一個資料夾。**
+- **The filter applies on submit, not as you type.** A VS Code tree view has nowhere to put an input control, so filtering is driven by a command and an input box. The current filter text stays visible beside the view title.
+- **Only the first workspace folder is scanned.**
 
-## 開發
+## Development
 
 ```bash
 npm install
-npm run compile      # esbuild 打包到 dist/
+npm run compile      # esbuild bundle into dist/
 npm run check-types  # tsc --noEmit
-npm test             # Vitest 單元測試
+npm test             # Vitest unit tests
 ```
 
-按 <kbd>F5</kbd> 會開啟 Extension Development Host 試跑。
+Press <kbd>F5</kbd> to try it in an Extension Development Host.
 
-`src/discovery/` 完全不 import `vscode`，所以整層邏輯都能用 Vitest 在純 Node 環境測試，不需要 VS Code test host。
+`src/discovery/` imports nothing from `vscode`, so the whole layer runs under Vitest in plain Node — no VS Code test host required.
 
 ```
 src/
-├── discovery/   # 檔案系統掃描、解析 tasks.md、git 目錄解析
-├── view/        # 樹狀節點模型與 TreeDataProvider
-└── test/        # Vitest 單元測試
-openspec/        # Spectra 規格（本專案自己也用 SDD 開發）
+├── discovery/   # file system scanning, tasks.md and .openspec.yaml parsing, git directory resolution
+├── view/        # tree node model, ordering, filtering, and the TreeDataProvider
+└── test/        # Vitest unit tests
+openspec/        # Spectra specs (this project is itself developed with SDD)
 ```
 
-## 授權
+CI runs the type check, the tests and a packaging step on Node 20.9 and 22. The older version is deliberate: it is the Node that VS Code 1.90 ships in its extension host, so an API missing there fails the build rather than the user's editor.
+
+## License
 
 [MIT](LICENSE) © fripig
