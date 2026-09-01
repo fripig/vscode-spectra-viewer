@@ -1,0 +1,5 @@
+# Spectra app data
+.spectra/
+.idea/
+node_modules/
+dist/
