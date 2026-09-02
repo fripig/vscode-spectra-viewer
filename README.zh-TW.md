@@ -28,15 +28,25 @@ Spectra 會把暫存（parked）的變更移出 `openspec/changes/`、放進 git
 
 ## 安裝
 
-尚未上架 Marketplace。請到 [最新 release](https://github.com/fripig/vscode-spectra-viewer/releases/latest) 下載 `.vsix` 後安裝：
+### 從 Open VSX 安裝（Cursor、VSCodium、Windsurf 等）
+
+已上架 [Open VSX](https://open-vsx.org/extension/fripig/vscode-spectra-viewer)，也就是 Cursor、VSCodium、Windsurf 等 VS Code 分支使用的擴充套件市集。在 Extensions 面板搜尋 **Spectra Viewer**，或用 CLI 安裝：
+
+```bash
+cursor --install-extension fripig.vscode-spectra-viewer
+```
+
+把 `cursor` 換成你編輯器的 CLI 即可。macOS 上這些 CLI 常不在 `PATH` 裡，Cursor 的位於 `/Applications/Cursor.app/Contents/Resources/app/bin/cursor`。
+
+### 從 VSIX 安裝（VS Code）
+
+尚未上架 VS Code Marketplace。請到 [最新 release](https://github.com/fripig/vscode-spectra-viewer/releases/latest) 下載 `.vsix` 後安裝：
 
 ```bash
 code --install-extension spectra-viewer-0.1.0.vsix
 ```
 
-或在編輯器裡操作：<kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → **Extensions: Install from VSIX…** → 選那個檔案。
-
-Cursor 等 VS Code 分支同樣適用 —— 把 `code` 換成該編輯器的 CLI 即可。macOS 上這些 CLI 常不在 `PATH` 裡，Cursor 的位於 `/Applications/Cursor.app/Contents/Resources/app/bin/cursor`。
+或在編輯器裡操作：<kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → **Extensions: Install from VSIX…** → 選那個檔案。各 VS Code 分支同樣適用。
 
 想自己建置的話：
 
